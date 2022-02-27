@@ -22,7 +22,7 @@ First run the following command:
 $ rustc main.rs
 ```
 
-This compiles main.rs into a binary executable file which is ran using:
+This compiles *main.rs* into a binary executable file which is ran using:
 
 ```sh
 $ ./main
@@ -261,3 +261,123 @@ You guessed: 6
 At this point, the first part of the game is done: we’re getting input from the keyboard and then printing it.
 
 ### Generating a Secret Number
+
+Then we'll need to be able to generate a random number. The standard library does not offer such functionality, though the Rust team offers us a **rand** crate that does the job. Before we can write code that uses **rand**, we need to modify the *Cargo.toml* file to include the **rand** crate as a dependency.
+
+```toml
+[package]
+name = "guessing_game"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.8.3"
+```
+
+In this case, we specify the **rand** crate with the semantic version specifier **0.8.3**. Cargo understands [Semantic Versioning](https://semver.org/) (sometimes called SemVer), which is a standard for writing version numbers. The number **0.8.3** is actually shorthand for **^0.8.3**, which means any version that is at least **0.8.3** but below **0.9.0**. Cargo considers these versions to have public APIs compatible with version **0.8.3**, and this specification ensures you’ll get the latest patch release that will still compile with the code in this chapter. Any version **0.9.0** or greater is not guaranteed to have the same API as what the following examples use.
+
+Now, without changing any of the code, let’s build the project:
+
+```sh
+$ cargo build
+    Updating crates.io index
+  Downloaded rand v0.8.3
+  Downloaded libc v0.2.86
+  Downloaded getrandom v0.2.2
+  Downloaded cfg-if v1.0.0
+  Downloaded ppv-lite86 v0.2.10
+  Downloaded rand_chacha v0.3.0
+  Downloaded rand_core v0.6.2
+   Compiling rand_core v0.6.2
+   Compiling libc v0.2.86
+   Compiling getrandom v0.2.2
+   Compiling cfg-if v1.0.0
+   Compiling ppv-lite86 v0.2.10
+   Compiling rand_chacha v0.3.0
+   Compiling rand v0.8.3
+   Compiling guessing_game v0.1.0 (file:///projects/guessing_game)
+    Finished dev [unoptimized + debuginfo] target(s) in 2.53s
+```
+
+When we include an external dependency, Cargo fetches the latest versions of everything that dependency needs from the *registry*, which is a copy of data from [Crates.io](Crates.io). Crates.io is where people in the Rust ecosystem post their open source Rust projects for others to use.
+
+After updating the registry, Cargo checks the **[dependencies]** section and downloads any crates listed that aren’t already downloaded. In this case, although we only listed **rand** as a dependency, Cargo also grabbed other crates that **rand** depends on to work. After downloading the crates, Rust compiles them and then compiles the project with the dependencies available.
+
+Cargo has a mechanism that ensures you can rebuild the same artifact every time you or anyone else builds your code: Cargo will use only the versions of the dependencies you specified until you indicate otherwise. For example, say that next week version 0.8.4 of the **rand** crate comes out, and that version contains an important bug fix, but it also contains a regression that will break your code. To handle this, Rust creates the *Cargo.lock* file the first time you run **cargo build**, so we now have this in the *guessing_game* directory.
+
+When you build a project for the first time, Cargo figures out all the versions of the dependencies that fit the criteria and then writes them to the *Cargo.lock* file. When you build your project in the future, Cargo will see that the *Cargo.lock* file exists and use the versions specified there rather than doing all the work of figuring out versions again. This lets you have a reproducible build automatically. In other words, your project will remain at **0.8.3** until you explicitly upgrade, thanks to the *Cargo.lock* file.
+
+When you do want to update a crate, Cargo provides the command **update**, which will ignore the Cargo.lock file and figure out all the latest versions that fit your specifications in Cargo.toml. Cargo will then write those versions to the Cargo.lock file. Otherwise, by default, Cargo will only look for versions greater than **0.8.3** and less than **0.9.0**. If the **rand** crate has released the two new versions **0.8.4** and **0.9.0** you would see the following if you ran **cargo update**:
+
+```sh
+$ cargo update
+    Updating crates.io index
+    Updating rand v0.8.3 -> v0.8.4
+```
+
+Cargo ignores the **0.9.0** release. At this point, you would also notice a change in your *Cargo.lock* file noting that the version of the **rand** crate you are now using is **0.8.4**. To use **rand** version **0.9.0** or any version in the **0.9.x** series, you’d have to update the Cargo.toml file to look like this instead:
+
+```toml
+[dependencies]
+rand = "0.9.0"
+```
+
+The next time you run **cargo build**, Cargo will update the registry of crates available and reevaluate your **rand** requirements according to the new version you have specified.
+
+The next step is to update src/main.rs, as shown:
+
+```rs
+use std::io;
+use rand::Rng; // we add the rand crate
+
+fn main() {
+    println!("Guess the number!");
+
+    let secret_number = rand::thread_rng().gen_range(1..101); // we generate a secret number
+
+    println!("The secret number is: {}", secret_number);
+
+    println!("Please input your guess.");
+
+    let mut guess = String::new();
+
+    io::stdin()
+        .read_line(&mut guess)
+        .expect("Failed to read line");
+
+    println!("You guessed: {}", guess);
+}
+
+```
+
+First, we add the line **use rand:: Rng**. The **Rng** trait defines methods that random number generators implement, and this trait must be in scope for us to use those methods.
+
+Next, we’re adding two lines in the middle. In the first line, we call the **rand::thread_rng** function that gives us the particular random number generator that we’re going to use: one that is local to the current thread of execution and seeded by the operating system. Then we call the **gen_range** method on the random number generator. This method is defined by the **Rng** trait that we brought into scope with the **use rand:: Rng** statement. The **gen_range** method takes a range expression as an argument and generates a random number in the range. The kind of range expression we’re using here takes the form **start..end** and is inclusive on the lower bound but exclusive on the upper bound, so we need to specify **1..101** to request a number between 1 and 100. Alternatively, we could pass the range **1..=100**, which is equivalent.
+
+Note: You won’t just know which traits to use and which methods and functions to call from a crate, so each crate has documentation with instructions for using it. Another neat feature of Cargo is that running the **cargo doc --open** command will build documentation provided by all of your dependencies locally and open it in your browser. If you’re interested in other functionality in the **rand** crate, for example, run **cargo doc --open** and click **rand** in the sidebar on the left.
+
+We'll then want to match our guess to the randomly generated number:
+
+```rs
+use rand::Rng;
+use std::cmp::Ordering;
+use std::io;
+
+fn main() {
+    // --snip--
+
+    println!("You guessed: {}", guess);
+
+    match guess.cmp(&secret_number) {
+        Ordering::Less => println!("Too small!"),
+        Ordering::Greater => println!("Too big!"),
+        Ordering::Equal => println!("You win!"),
+    }
+}
+```
+
+First we add another **use** statement, bringing a type called **std::cmp:: Ordering** into scope from the standard library. The **Ordering** type is another enum and has the variants **Less**, **Greater**, and **Equal**. These are the three outcomes that are possible when you compare two values.
+
+Then we add five new lines at the bottom that use the **Ordering** type. The **cmp** method compares two values and can be called on anything that can be compared. It takes a reference to whatever you want to compare with: here it’s comparing the **guess** to the **secret_number**. Then it returns a variant of the **Ordering** enum we brought into scope with the use statement. We use a **match** expression to decide what to do next based on which variant of **Ordering** was returned from the call to **cmp** with the values in **guess** and **secret_number**.

@@ -464,3 +464,185 @@ You guessed: 76
 Too big!
 
 ```
+
+### Allowing Multiple Guesses with Looping
+
+The **loop** keyword creates an infinite loop. We’ll add a loop to give users more chances at guessing the number:
+
+```rs
+use rand::Rng;
+use std::cmp::Ordering;
+use std::io;
+
+fn main() {
+    println!("Guess the number!");
+
+    let secret_number = rand::thread_rng().gen_range(1..101);
+
+    // --snip--
+
+    println!("The secret number is: {}", secret_number);
+
+    loop {
+        println!("Please input your guess.");
+
+        // --snip--
+
+        let mut guess = String::new();
+
+        io::stdin()
+            .read_line(&mut guess)
+            .expect("Failed to read line");
+
+        let guess: u32 = guess.trim().parse().expect("Please type a number!");
+
+        println!("You guessed: {}", guess);
+
+        match guess.cmp(&secret_number) {
+            Ordering::Less => println!("Too small!"),
+            Ordering::Greater => println!("Too big!"),
+            Ordering::Equal => println!("You win!"),
+        }
+    }
+}
+```
+
+As you can see, we’ve moved everything from the guess input prompt onward into a loop. Be sure to indent the lines inside the loop another four spaces each and run the program again. The program will now ask for another guess forever, which actually introduces a new problem. 
+
+The user could always interrupt the program by using the keyboard shortcut ctrl-c. But there’s another way to escape this insatiable monster, as mentioned in the **parse** discussion in “Comparing the Guess to the Secret Number”: if the user enters a non-number answer, the program will crash. We can take advantage of that to allow the user to quit, as shown here:
+
+```sh
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:///projects/guessing_game)
+    Finished dev [unoptimized + debuginfo] target(s) in 1.50s
+     Running `target/debug/guessing_game`
+Guess the number!
+The secret number is: 59
+Please input your guess.
+45
+You guessed: 45
+Too small!
+Please input your guess.
+60
+You guessed: 60
+Too big!
+Please input your guess.
+59
+You guessed: 59
+You win!
+Please input your guess.
+quit
+thread 'main' panicked at 'Please type a number!: ParseIntError { kind: InvalidDigit }', src/main.rs:28:47
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+```
+
+Typing **quit** will quit the game, but as you’ll notice so will entering any other non-number input. This is suboptimal to say the least; we want the game to also stop when the correct number is guessed.
+
+Let’s program the game to quit when the user wins by adding a **break** statement:
+
+```rs
+        // --snip--
+
+        match guess.cmp(&secret_number) {
+            Ordering::Less => println!("Too small!"),
+            Ordering::Greater => println!("Too big!"),
+            Ordering::Equal => {
+                println!("You win!");
+                break;
+            }
+        }
+    }
+}
+```
+
+Adding the **break** line after **You win!** makes the program exit the loop when the user guesses the secret number correctly. Exiting the loop also means exiting the program, because the loop is the last part of **main**.
+
+To further refine the game’s behavior, rather than crashing the program when the user inputs a non-number, let’s make the game ignore a non-number so the user can continue guessing:
+
+```rs
+        // --snip--
+
+        io::stdin()
+            .read_line(&mut guess)
+            .expect("Failed to read line");
+
+        let guess: u32 = match guess.trim().parse() {
+            Ok(num) => num,
+            Err(_) => continue,
+        };
+
+        println!("You guessed: {}", guess);
+
+        // --snip--
+```
+
+We switch from an **expect** call to a **match** expression to move from crashing on an error to handling the error. Remember that **parse** returns a **Result** type and **Result** is an **enum** that has the variants **Ok** or **Err**. We’re using a match expression here, as we did with the **Ordering** result of the **cmp** method.
+
+If **parse** is able to successfully turn the string into a number, it will return an **Ok** value that contains the resulting number. That **Ok** value will match the first arm’s pattern, and the **match** expression will just return the **num** value that **parse** produced and put inside the **Ok** value. That number will end up right where we want it in the new **guess** variable we’re creating.
+
+If **parse** is not able to turn the string into a number, it will return an **Err** value that contains more information about the error. The **Err** value does not match the **Ok(num)** pattern in the first match arm, but it does match the **Err(_)** pattern in the second arm. The underscore, **_**, is a catchall value; in this example, we’re saying we want to match all **Err** values, no matter what information they have inside them. So the program will execute the second arm’s code, **continue**, which tells the program to go to the next iteration of the **loop** and ask for another **guess**.
+
+Now everything in the program should work as expected:
+
+```sh
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:///projects/guessing_game)
+    Finished dev [unoptimized + debuginfo] target(s) in 4.45s
+     Running `target/debug/guessing_game`
+Guess the number!
+The secret number is: 61
+Please input your guess.
+10
+You guessed: 10
+Too small!
+Please input your guess.
+99
+You guessed: 99
+Too big!
+Please input your guess.
+foo
+Please input your guess.
+61
+You guessed: 61
+You win!
+```
+
+With one tiny final tweak, we will finish the guessing game. Recall that the program is still printing the secret number. That worked well for testing, but it ruins the game. Let’s delete the println! that outputs the secret number:
+
+```rs
+use rand::Rng;
+use std::cmp::Ordering;
+use std::io;
+
+fn main() {
+    println!("Guess the number!");
+
+    let secret_number = rand::thread_rng().gen_range(1..101);
+
+    loop {
+        println!("Please input your guess.");
+
+        let mut guess = String::new();
+
+        io::stdin()
+            .read_line(&mut guess)
+            .expect("Failed to read line");
+
+        let guess: u32 = match guess.trim().parse() {
+            Ok(num) => num,
+            Err(_) => continue,
+        };
+
+        println!("You guessed: {}", guess);
+
+        match guess.cmp(&secret_number) {
+            Ordering::Less => println!("Too small!"),
+            Ordering::Greater => println!("Too big!"),
+            Ordering::Equal => {
+                println!("You win!");
+                break;
+            }
+        }
+    }
+}
+```

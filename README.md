@@ -1002,4 +1002,462 @@ You can also initialize an array to contain the same value for each element by s
 let a = [3; 5];
 ```
 
-The array named **a** will contain **5** elements that will all be set to the value **3** initially. This is the same as writing let **a = [3, 3, 3, 3, 3]** but in a more concise way.
+The array named **a** will contain **5** elements that will all be set to the value **3** initially. This is the same as writing **let a = [3, 3, 3, 3, 3]** but in a more concise way.
+
+An array can be accessed the same way as in other programming languages:
+
+```rs
+fn main() {
+    let a = [1, 2, 3, 4, 5];
+
+    let first = a[0];
+    let second = a[1];
+}
+```
+
+Let's suppose we have the following chunk of code:
+
+```rs
+use std::io;
+
+fn main() {
+    let a = [1, 2, 3, 4, 5];
+
+    println!("Please enter an array index.");
+
+    let mut index = String::new();
+
+    io::stdin()
+        .read_line(&mut index)
+        .expect("Failed to read line");
+
+    let index: usize = index
+        .trim()
+        .parse()
+        .expect("Index entered was not a number");
+
+    let element = a[index];
+
+    println!(
+        "The value of the element at index {} is: {}",
+        index, element
+    );
+}
+```
+
+If ran with user input being either number 0 through 4, code will run successfully. However, if a number exceeding such range is given, let's say 10, the code panics:
+
+```sh
+thread 'main' panicked at 'index out of bounds: the len is 5 but the index is 10', src/main.rs:19:19
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+```
+
+The error is raised at runtime because the compiler does not know the input the user will provide. This is one of Rust's advantage over other low-level languages that won't raise an error, and just let the user access invalid memory.
+
+## Functions
+
+Functions are prevalent in Rust code. You’ve already seen one of the most important functions in the language: the **main** function, which is the entry point of many programs. You’ve also seen the **fn** keyword, which allows you to declare new functions.
+
+Rust code uses *snake case* as the conventional style for function and variable names, in which all letters are lowercase and underscores separate words. Here’s a program that contains an example function definition:
+
+```rs
+fn main() {
+    println!("Hello, world!");
+
+    another_function();
+}
+
+fn another_function() {
+    println!("Another function.");
+}
+```
+
+We define a function in Rust by entering **fn** followed by a function name and a set of parentheses. The curly brackets tell the compiler where the function body begins and ends.
+
+We can call any function we’ve defined by entering its name followed by a set of parentheses. Because **another_function** is defined in the program, it can be called from inside the **main** function. Note that we defined **another_function** *after* the **main** function in the source code; we could have defined it before as well. Rust doesn’t care where you define your functions, only that they’re defined somewhere.
+
+Functions will be explored further in the *functions* project.
+
+### Parameters
+
+We can define functions to have *parameters*, which are special variables that are part of a function’s signature. When a function has parameters, you can provide it with concrete values for those parameters. Technically, the concrete values are called *arguments*, but in casual conversation, people tend to use the words *parameter* and *argument* interchangeably for either the variables in a function’s definition or the concrete values passed in when you call a function.
+
+We then modify the *main.rs* file in functions as an example:
+
+```rs
+fn main() {
+    another_function(5);
+}
+
+fn another_function(x: i32) {
+    println!("The value of x is: {}", x);
+}
+```
+
+By running this program we get:
+
+```sh
+$ cargo run
+   Compiling functions v0.1.0 (file:///projects/functions)
+    Finished dev [unoptimized + debuginfo] target(s) in 1.21s
+     Running `target/debug/functions`
+The value of x is: 5
+```
+
+In function signatures, you *must* declare the type of each parameter. This is a deliberate decision in Rust’s design: requiring type annotations in function definitions means the compiler almost never needs you to use them elsewhere in the code to figure out what type you mean.
+
+When defining multiple parameters, separate the parameter declarations with commas, like this:
+
+```rs
+fn main() {
+    print_labeled_measurement(5, 'h');
+}
+
+fn print_labeled_measurement(value: i32, unit_label: char) {
+    println!("The measurement is: {}{}", value, unit_label);
+}
+```
+
+This code outputs:
+
+```sh
+$ cargo run
+   Compiling functions v0.1.0 (file:///projects/functions)
+    Finished dev [unoptimized + debuginfo] target(s) in 0.31s
+     Running `target/debug/functions`
+The measurement is: 5h
+```
+
+### Statements and Expressions
+
+Function bodies are made up of a series of statements optionally ending in an expression. So far, the functions we’ve covered haven’t included an ending expression, but you have seen an expression as part of a statement. Because Rust is an expression-based language, this is an important distinction to understand. Other languages don’t have the same distinctions, so let’s look at what statements and expressions are and how their differences affect the bodies of functions.
+
+*Statements* are instructions that perform some action and do not return a value. *Expressions* evaluate to a resulting value. Let’s look at some examples.
+
+We’ve actually already used statements and expressions. Creating a variable and assigning a value to it with the *let* keyword is a statement.
+
+```rs
+fn main() {
+    let y = 6;
+}
+```
+
+Function definitions are also statements; the entire preceding example is a statement in itself.
+
+Statements do not return values. Therefore, you can’t assign a let statement to another variable, as the following code tries to do; you’ll get an error:
+
+```rs
+fn main() {
+    let x = (let y = 6);
+}
+```
+
+When you run this program, the error you’ll get looks like this:
+
+```sh
+$ cargo run
+   Compiling functions v0.1.0 (file:///projects/functions)
+error: expected expression, found statement (`let`)
+ --> src/main.rs:2:14
+  |
+2 |     let x = (let y = 6);
+  |              ^^^^^^^^^
+  |
+  = note: variable declaration using `let` is a statement
+
+error[E0658]: `let` expressions in this position are experimental
+ --> src/main.rs:2:14
+  |
+2 |     let x = (let y = 6);
+  |              ^^^^^^^^^
+  |
+  = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+  = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
+
+warning: unnecessary parentheses around assigned value
+ --> src/main.rs:2:13
+  |
+2 |     let x = (let y = 6);
+  |             ^         ^
+  |
+  = note: `#[warn(unused_parens)]` on by default
+help: remove these parentheses
+  |
+2 -     let x = (let y = 6);
+2 +     let x = let y = 6;
+  | 
+
+For more information about this error, try `rustc --explain E0658`.
+warning: `functions` (bin "functions") generated 1 warning
+error: could not compile `functions` due to 2 previous errors; 1 warning emitted
+```
+
+The **let y = 6** statement does not return a value, so there isn’t anything for **x** to bind to. This is different from what happens in other languages, such as C and Ruby, where the assignment returns the value of the assignment. In those languages, you can write **x = y = 6** and have both **x** and **y** have the value **6**; that is not the case in Rust.
+
+Expressions evaluate to a value and make up most of the rest of the code that you’ll write in Rust. Consider a math operation, such as **5 + 6**, which is an expression that evaluates to the value **11**. Expressions can be part of statements: as seen before, the **6** in the statement **let y = 6**; is an expression that evaluates to the value **6**. Calling a function is an expression. Calling a macro is an expression. A new scope block created with curly brackets is an expression, for example:
+
+```rs
+fn main() {
+    let y = {
+        let x = 3;
+        x + 1
+    };
+
+    println!("The value of y is: {}", y);
+}
+```
+
+This expression:
+
+```rs
+{
+    let x = 3;
+    x + 1
+}
+```
+
+is a block that, in this case, evaluates to **4**. That value gets bound to **y** as part of the **let** statement. Note that the **x + 1** line doesn’t have a semicolon at the end, unlike most of the lines you’ve seen so far. Expressions do not include ending semicolons. If you add a semicolon to the end of an expression, you turn it into a statement, and it will then not return a value. Keep this in mind as you explore function return values and expressions next.
+
+### Functions with Return Values
+
+Functions can return values to the code that calls them. We don’t name return values, but we must declare their type after an arrow (**->** as in Python). In Rust, the return value of the function is synonymous with the value of the final expression in the block of the body of a function. You can return early from a function by using the **return** keyword and specifying a value, but most functions return the last expression implicitly. Here’s an example of a function that returns a value:
+
+```rs
+fn five() -> i32 {
+    5
+}
+
+fn main() {
+    let x = five();
+
+    println!("The value of x is: {}", x);
+}
+```
+
+There are no function calls, macros, or even **let** statements in the **five** function, just the number **5** by itself. That’s a perfectly valid function in Rust. Note that the function’s return type is specified too, as **-> i32**. Try running this code; the output should look like this:
+
+```sh
+$ cargo run
+   Compiling functions v0.1.0 (file:///projects/functions)
+    Finished dev [unoptimized + debuginfo] target(s) in 0.30s
+     Running `target/debug/functions`
+The value of x is: 5
+```
+
+The five function has no parameters and defines the type of the return value, but the body of the function is a lonely 5 with no semicolon because it’s an expression whose value we want to return.
+
+Let’s look at another example:
+
+```rs
+fn main() {
+    let x = plus_one(5);
+
+    println!("The value of x is: {}", x);
+}
+
+fn plus_one(x: i32) -> i32 {
+    x + 1
+}
+```
+
+Running this code will print **The value of x is: 6**. But if we place a semicolon at the end of the line containing **x + 1**, changing it from an expression to a statement, we’ll get an error:
+
+```sh
+$ cargo run
+   Compiling functions v0.1.0 (file:///projects/functions)
+error[E0308]: mismatched types
+ --> src/main.rs:7:24
+  |
+7 | fn plus_one(x: i32) -> i32 {
+  |    --------            ^^^ expected `i32`, found `()`
+  |    |
+  |    implicitly returns `()` as its body has no tail or `return` expression
+8 |     x + 1;
+  |          - help: consider removing this semicolon
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `functions` due to previous error
+```
+
+The main error message, “mismatched types, ” reveals the core issue with this code. The definition of the function **plus_one** says that it will return an **i32**, but statements don’t evaluate to a value, which is expressed by **()**, the unit type. Therefore, nothing is returned, which contradicts the function definition and results in an error. 
+
+## Comments
+
+Comments are written starting with double forward slashes (**//**) and following with the code's comment. There are no multi line comments, so every line must start with double forward slashes. Example given:
+
+```rs
+fn five() -> i32 {
+    // this function returns 5
+    5
+}
+
+fn main() {
+    let f = five();
+    println!("Ive just instantiated a number {}", f); // prints text to console
+}
+```
+
+## Control Flow
+
+The ability to run some code depending on if a condition is true, or run some code repeatedly while a condition is true, are basic building blocks in most programming languages. The most common constructs that let you control the flow of execution of Rust code are **if** expressions and loops.
+
+* **if** Expressions
+
+**if** conditions are nested with a syntax similar to that of defining functions:
+
+```rs
+fn main() {
+    let b = greater_than_one(3);
+    println!("Condition was {}", b);
+}
+
+fn greater_than_one(x: i32) -> bool {
+    if x > 1{
+        True
+    } else {
+        False
+    }
+}
+```
+
+Running the code outputs:
+
+```sh
+$ cargo run
+   Compiling branches v0.1.0 (file:///projects/branches)
+    Finished dev [unoptimized + debuginfo] target(s) in 0.31s
+     Running `target/debug/branches`
+Condition was true
+```
+
+All **if** expressions start with the keyword **if**, followed by a condition. In this case, the condition checks whether or not the variable **x** has a value greater than **1**. We place block of code to execute if the condition is true immediately after the condition inside curly brackets.
+
+Optionally, we can also include an **else** expression, which we chose to do here, to give the program an alternative block of code to execute should the condition evaluate to false. If you don’t provide an **else** expression and the condition is false, the program will just skip the **if** block and move on to the next bit of code.
+
+Conditions *must* be boolean, one can't establish truth values to other types of data (such as numbers or strings, like Python supports).
+
+* Multiple **if else** statements
+
+You can use multiple conditions by combining **if** and **else** in an **else if** expression. For example:
+
+```rs
+fn main() {
+    let number = 6;
+
+    if number % 4 == 0 {
+        println!("number is divisible by 4");
+    } else if number % 3 == 0 {
+        println!("number is divisible by 3");
+    } else if number % 2 == 0 {
+        println!("number is divisible by 2");
+    } else {
+        println!("number is not divisible by 4, 3, or 2");
+    }
+}
+```
+
+When this program executes, it checks each **if** expression in turn and executes the first body for which the condition holds true. Note that even though 6 is divisible by 2, we don’t see the output **number is divisible by 2**, nor do we see the **number is not divisible by 4, 3, or 2** text from the **else** block. That’s because Rust only executes the block for the first true condition, and once it finds one, it doesn’t even check the rest.
+
+* Using **if** inside a **let** statement
+
+Because **if** is an expression, we can use it on the right side of a **let** statement to assign the outcome to a variable:
+
+```rs
+fn main() {
+    let condition = true;
+    let number = if condition { 5 } else { 6 };
+
+    println!("The value of number is: {}", number);
+}
+```
+
+However, **if** and **else** values should be type compatible, running:
+
+```rs
+fn main() {
+    let condition = true;
+
+    let number = if condition { 5 } else { "six" };
+
+    println!("The value of number is: {}", number);
+}
+```
+
+Raises an error:
+
+```sh
+$ cargo run
+   Compiling branches v0.1.0 (file:///projects/branches)
+error[E0308]: `if` and `else` have incompatible types
+ --> src/main.rs:4:44
+  |
+4 |     let number = if condition { 5 } else { "six" };
+  |                                 -          ^^^^^ expected integer, found `&str`
+  |                                 |
+  |                                 expected because of this
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `branches` due to previous error
+```
+
+* Repetition with Loops
+
+Rust has three kinds of loops: **loop**, **while**, and **for**. Let’s try each one.
+
+The **loop** keyword tells Rust to execute a block of code over and over again forever or until you explicitly tell it to stop. Example given:
+
+```rs
+fn main() {
+    loop {
+        println!("again!");
+    }
+}
+```
+
+This chunk of code will indefinitely print "again!" to the console until the user explicitly cancels execution with **^C**.
+
+Fortunately, Rust also provides a way to break out of a loop using code. You can place the **break** keyword within the loop to tell the program when to stop executing the loop (as we did in the guessing game example). We also used **continue** in the guessing game, which in a loop tells the program to skip over any remaining code in this iteration of the loop and go to the next iteration.
+
+One can also nest loops inside loops:
+
+```rs
+fn main() {
+    let mut count = 0;
+    'counting_up: loop {
+        println!("count = {}", count);
+        let mut remaining = 10;
+
+        loop {
+            println!("remaining = {}", remaining);
+            if remaining == 9 {
+                break;
+            }
+            if count == 2 {
+                break 'counting_up;
+            }
+            remaining -= 1;
+        }
+
+        count += 1;
+    }
+    println!("End count = {}", count);
+}
+```
+
+The outer loop has the label **'counting_up**, and it will count up from 0 to 2. The inner loop without a label counts down from 10 to 9. The first **break** that doesn’t specify a label will exit the inner loop only. The **break 'counting_up; ** statement will exit the outer loop. This code prints:
+
+```sh
+$ cargo run
+   Compiling loops v0.1.0 (file:///projects/loops)
+    Finished dev [unoptimized + debuginfo] target(s) in 0.58s
+     Running `target/debug/loops`
+count = 0
+remaining = 10
+remaining = 9
+count = 1
+remaining = 10
+remaining = 9
+count = 2
+remaining = 10
+End count = 2
+```

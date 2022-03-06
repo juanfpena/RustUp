@@ -1461,3 +1461,51 @@ count = 2
 remaining = 10
 End count = 2
 ```
+
+One of the uses of a **loop** is to retry an operation you know might fail, such as checking whether a thread has completed its job. You might also need to pass the result of that operation out of the loop to the rest of your code. To do this, you can add the value you want returned after the **break** expression you use to stop the loop; that value will be returned out of the loop so you can use it, as shown here:
+
+```rs
+fn main() {
+    let mut counter = 0;
+
+    let result = loop {
+        counter += 1;
+
+        if counter == 10 {
+            break counter * 2;
+        }
+    };
+
+    println!("The result is {}", result);
+}
+```
+
+A program will often need to evaluate a condition within a loop. While the condition is true, the loop runs. When the condition ceases to be true, the program calls **break**, stopping the loop. It’s possible to implement behavior like this using a combination of **loop**, **if**, **else**, and **break**; you could try that now in a program, if you’d like. However, this pattern is so common that Rust has a built-in language construct for it, called a **while** loop:
+
+```rs
+fn main() {
+    let mut number = 3;
+
+    while number != 0 {
+        println!("{}!", number);
+
+        number -= 1;
+    }
+
+    println!("LIFTOFF!!!");
+}
+```
+
+We can also loop through items inside a collection with a fairly similar syntax as Python:
+
+```rs
+fn main() {
+    let a = [10, 20, 30, 40, 50];
+
+    for element in a {
+        println!("the value is: {}", element);
+    }
+}
+```
+
+## Ownership

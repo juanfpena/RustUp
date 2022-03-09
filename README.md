@@ -1593,3 +1593,97 @@ With the **String** type, in order to support a mutable, growable piece of text,
 
 * The memory must be requested from the memory allocator at runtime.
 * We need a way of returning this memory to the allocator when we’re done with our String.
+
+That first part is done by us: when we call **String::from**, its implementation requests the memory it needs. This is pretty much universal in programming languages.
+
+However, the second part is different. In languages with a garbage collector (GC), the GC keeps track of and cleans up memory that isn’t being used anymore, and we don’t need to think about it. In most languages without a GC, it’s our responsibility to identify when memory is no longer being used and call code to explicitly return it, just as we did to request it. Doing this correctly has historically been a difficult programming problem. If we forget, we’ll waste memory. If we do it too early, we’ll have an invalid variable. If we do it twice, that’s a bug too. We need to pair exactly one **allocate** with exactly one **free**.
+
+Rust takes a different path: the memory is automatically returned once the variable that owns it goes out of scope:
+
+```rs
+{
+    let s = String::from("hello");
+}
+```
+
+There is a natural point at which we can return the memory our **String** needs to the allocator: when **s** goes out of scope. When a variable goes out of scope, Rust calls a special function for us. This function is called **drop**, and it’s where the author of **String** can put the code to return the memory. Rust calls **drop** automatically at the closing curly bracket.
+
+### Ways Variables and Data Interact: Move
+
+Multiple variables can interact with the same data in different ways in Rust:
+
+```rs
+let x = 5;
+let y = x;
+```
+
+This piece of code binds the value of **x** to **5**, then binds the value of **y** to **x**. As the size of **5** is known and fixed, both **x** and **y** get pushed to the stack.
+
+Now let’s look at the **String** version:
+
+```rs
+let s1 = String::from("hello");
+let s2 = s1;
+```
+
+This looks very similar, so we might assume that the way it works would be the same: that is, the second line would make a copy of the value in **s1** and bind it to **s2**. But this isn’t quite what happens.
+
+A **String** is made up of three parts, shown on the left: a pointer to the memory that holds the contents of the string, a length, and a capacity. This group of data is stored on the stack. On the right is the memory on the heap that holds the contents.
+
+![alt text](./static/s1_to_s2.png)
+
+The length is how much memory, in bytes, the contents of the **String** is currently using. The capacity is the total amount of memory, in bytes, that the **String** has received from the allocator. The difference between length and capacity matters, but not in this context.
+
+When we assign **s1** to **s2**, the **String** data is copied, meaning we copy the pointer, the length, and the capacity that are on the stack. We do not copy the data on the heap that the pointer refers to:
+
+![alt_text](./static/s1_to_s2_2.png)
+
+See that Rust copies the variable's pointer, length and capacity, but does not copy the data the pointer is referring to in the heap. If so, the operation **s2 = s1** would be very expensive at runtime (proportional to the size of the variable).
+
+Earlier, we said that when a variable goes out of scope, Rust automatically calls the drop function and cleans up the heap memory for that variable. But the image above shows both data pointers pointing to the same location. This is a problem: when **s2** and **s1** go out of scope, they will both try to free the same memory. This is known as a double free error and is one of the memory safety bugs we mentioned previously. Freeing memory twice can lead to memory corruption, which can potentially lead to security vulnerabilities.
+
+To ensure memory safety, after the line let **s2 = s1**, Rust considers **s1** as no longer valid. Therefore, Rust doesn’t need to free anything when **s1** goes out of scope. Check out what happens when you try to use **s1** after **s2** is created; it won’t work:
+
+```rs
+fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1;
+
+    println!("{}, world!", s1);
+}
+```
+
+You’ll get an error like this because Rust prevents you from using the invalidated reference:
+
+```sh
+$ cargo run
+   Compiling ownership v0.1.0 (file:///projects/ownership)
+error[E0382]: borrow of moved value: `s1`
+ --> src/main.rs:5:28
+  |
+2 |     let s1 = String::from("hello");
+  |         -- move occurs because `s1` has type `String`, which does not implement the `Copy` trait
+3 |     let s2 = s1;
+  |              -- value moved here
+4 | 
+5 |     println!("{}, world!", s1);
+  |                            ^^ value borrowed here after move
+
+For more information about this error, try `rustc --explain E0382`.
+error: could not compile `ownership` due to previous error
+```
+
+As Rust invalidates the first variable, this is known as a *move*. When **s2** goes out of scope, it frees up the memory and we're done. In addition, there’s a design choice that’s implied by this: Rust will never automatically create “deep” copies of your data. Therefore, any automatic copying can be assumed to be inexpensive in terms of runtime performance.
+
+### Ways Variables and Data Interact: Clone
+
+If we do want to deeply copy the heap data of the **String**, not just the stack data, we can use a common method called **clone**:
+
+```rs
+fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1.clone();
+
+    println!("s1 = {}, s2 = {}", s1, s2);
+}
+```
